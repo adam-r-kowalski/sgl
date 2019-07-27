@@ -8,19 +8,6 @@ namespace sgl {
 
 inline namespace v0 {
 
-template <template <auto> class P, auto... Ts> struct any;
-
-template <template <auto> class P, auto T, auto... Ts> struct any<P, T, Ts...> {
-  constexpr static bool value = P<T>::value ? true : any<P, Ts...>::value;
-};
-
-template <template <auto> class P> struct any<P> {
-  constexpr static bool value = false;
-};
-
-template <template <auto> class P, auto... Ts>
-static constexpr bool any_v = any<P, Ts...>::value;
-
 static constexpr size_t dynamic = -1;
 
 template <size_t N>
@@ -36,7 +23,7 @@ template <size_t... Ns> struct dimensions {};
 template <size_t... Ns> struct dimension_traits<dimensions<Ns...>> {
   static constexpr size_t rank = sizeof...(Ns);
   static constexpr size_t size =
-      any_v<is_dynamic, Ns...> ? dynamic : (Ns * ...);
+      (is_dynamic_v<Ns> || ...) ? dynamic : (Ns * ...);
   static constexpr std::array<size_t, rank> shape = {Ns...};
 };
 
