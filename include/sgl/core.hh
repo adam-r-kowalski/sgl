@@ -8,34 +8,47 @@ namespace sgl {
 
 inline namespace v0 {
 
+template <template <auto> class P, auto... Ts> struct any;
+
+template <template <auto> class P, auto T, auto... Ts> struct any<P, T, Ts...> {
+  constexpr static bool value = P<T>::value ? true : any<P, Ts...>::value;
+};
+
+template <template <auto> class P> struct any<P> {
+  constexpr static bool value = false;
+};
+
+template <template <auto> class P, auto... Ts>
+static constexpr bool any_v = any<P, Ts...>::value;
+
+static constexpr size_t dynamic = -1;
+
+template <size_t N>
+struct is_dynamic
+    : std::conditional_t<(N == dynamic), std::true_type, std::false_type> {};
+
+template <size_t N> static constexpr bool is_dynamic_v = is_dynamic<N>::value;
+
 template <class T> struct dimension_traits;
 
 template <size_t... Ns> struct dimensions {};
 
 template <size_t... Ns> struct dimension_traits<dimensions<Ns...>> {
   static constexpr size_t rank = sizeof...(Ns);
-  static constexpr size_t size = (Ns * ...);
+  static constexpr size_t size =
+      any_v<is_dynamic, Ns...> ? dynamic : (Ns * ...);
   static constexpr std::array<size_t, rank> shape = {Ns...};
 };
 
-// clang-format off
-template <class D,
-	  class traits = dimension_traits<D>>
-concept Dimensions = requires() {
-  { traits::rank } -> size_t;
-  { traits::size } -> size_t;
-  { traits::shape } -> std::array<size_t, traits::rank>;
-};
-// clang-format on
-
-static constexpr size_t dynamic = -1;
-
-template <class T, size_t N, bool = (N == dynamic)> struct storage;
+template <class T, size_t N, bool = is_dynamic_v<N>> struct storage;
 
 template <class T, size_t N> struct storage<T, N, true> {
   using storage_type = std::vector<T>;
 
   storage(size_t n) : data_(n) {}
+
+  auto operator[](size_t index) -> T & { return data_[index]; }
+  auto operator[](size_t index) const -> const T & { return data_[index]; }
 
   friend auto size(const storage &s) -> size_t { return s.data_.size(); }
 
@@ -45,6 +58,9 @@ private:
 
 template <class T, size_t N> struct storage<T, N, false> {
   using storage_type = std::array<T, N>;
+
+  auto operator[](size_t index) -> T & { return data_[index]; }
+  auto operator[](size_t index) const -> const T & { return data_[index]; }
 
 private:
   storage_type data_;

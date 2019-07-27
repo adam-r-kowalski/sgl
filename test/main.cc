@@ -6,18 +6,35 @@
 
 using namespace sgl;
 
+/*
 TEST_CASE("dimension model the Dimensions concept") {
   static_assert(Dimensions<dimensions<3, 5, 7>>);
 }
+*/
 
 TEST_CASE("dimension have a rank") {
   using traits = dimension_traits<dimensions<3, 5, 7>>;
   static_assert(traits::rank == 3);
 }
 
+TEST_CASE("dynamic dimensions have a rank") {
+  using traits = dimension_traits<dimensions<dynamic, 5, 7>>;
+  static_assert(traits::rank == 3);
+}
+
+TEST_CASE("multiple dimensions can be dynamic") {
+  using traits = dimension_traits<dimensions<dynamic, 5, dynamic>>;
+  static_assert(traits::rank == 3);
+}
+
 TEST_CASE("dimension have a size") {
   using traits = dimension_traits<dimensions<3, 5, 7>>;
   static_assert(traits::size == 3 * 5 * 7);
+}
+
+TEST_CASE("dynamic dimensions have a dynamic size") {
+  using traits = dimension_traits<dimensions<dynamic, 5, 7>>;
+  static_assert(traits::size == dynamic);
 }
 
 TEST_CASE("dimension have a shape") {
@@ -40,8 +57,51 @@ TEST_CASE("storage with dynamic size can be created with a runtime capacity") {
   REQUIRE(size(s) == 5);
 }
 
+TEST_CASE("storage with dynamic size can be indexed") {
+  auto s = storage<int, dynamic>{5};
+
+  REQUIRE(s[0] == 0);
+  REQUIRE(s[1] == 0);
+  REQUIRE(s[2] == 0);
+  REQUIRE(s[3] == 0);
+  REQUIRE(s[4] == 0);
+
+  s[0] = 0;
+  s[1] = 1;
+  s[2] = 2;
+  s[3] = 3;
+  s[4] = 4;
+
+  REQUIRE(s[0] == 0);
+  REQUIRE(s[1] == 1);
+  REQUIRE(s[2] == 2);
+  REQUIRE(s[3] == 3);
+  REQUIRE(s[4] == 4);
+}
+
 TEST_CASE("storage with static size must be default constructed") {
   auto s = storage<int, 5>{};
-  REQUIRE(size(s) == 5);
   static_assert(size(s) == 5);
+}
+
+TEST_CASE("storage with static size can be indexed") {
+  auto s = storage<int, 5>{};
+
+  REQUIRE(s[0] == 0);
+  REQUIRE(s[1] == 0);
+  REQUIRE(s[2] == 0);
+  REQUIRE(s[3] == 0);
+  REQUIRE(s[4] == 0);
+
+  s[0] = 0;
+  s[1] = 1;
+  s[2] = 2;
+  s[3] = 3;
+  s[4] = 4;
+
+  REQUIRE(s[0] == 0);
+  REQUIRE(s[1] == 1);
+  REQUIRE(s[2] == 2);
+  REQUIRE(s[3] == 3);
+  REQUIRE(s[4] == 4);
 }
