@@ -52,6 +52,12 @@ TEST_CASE("storage with unknown dimensions is vector") {
   static_assert(std::is_same_v<storage_type, std::vector<int>>);
 }
 
+TEST_CASE("storage with static size can be default constructed") {
+  auto s = storage<int, 5>{};
+  REQUIRE(size(s) == 5);
+}
+
+
 TEST_CASE("storage with dynamic size can be created with a runtime capacity") {
   auto s = storage<int, dynamic>{5};
   REQUIRE(size(s) == 5);
