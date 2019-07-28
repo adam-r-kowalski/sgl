@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <numeric>
 #include <type_traits>
 #include <vector>
@@ -38,7 +39,7 @@ constexpr auto shape(dimensions<Ns...>) -> std::array<size_t, sizeof...(Ns)> {
 }
 
 template <Dimensions D> constexpr auto rank(D d) -> size_t {
-  return shape(d).size();
+  return size(shape(d));
 }
 
 template <class T, size_t N> struct storage {
@@ -48,15 +49,43 @@ template <class T, size_t N> struct storage {
   explicit storage(size_t n) requires Dynamic<N> : data_(n) {}
   storage() requires(!Dynamic<N>) = default;
 
-  constexpr friend auto size(const storage &s) -> size_t {
-    return s.data_.size();
-  }
-
   auto operator[](size_t index) -> T & { return data_[index]; }
   auto operator[](size_t index) const -> const T & { return data_[index]; }
 
 private:
   storage_type data_;
+};
+
+template <size_t N> struct row_major {
+  explicit row_major(const std::array<size_t, N> &shape) {
+    stride_[size(shape) - 1] = 1;
+    std::partial_sum(rbegin(shape), rend(shape) - 1, rbegin(stride_) + 1,
+                     std::multiplies{});
+  }
+
+  auto linear_index(const std::array<size_t, N> &cartesian_index) -> size_t {
+    return std::transform_reduce(begin(stride_), end(stride_),
+                                 begin(cartesian_index), 0);
+  }
+
+private:
+  std::array<size_t, N> stride_;
+};
+
+template <size_t N> struct column_major {
+  explicit column_major(const std::array<size_t, N> &shape) {
+    stride_[0] = 1;
+    std::partial_sum(begin(shape), end(shape) - 1, begin(stride_) + 1,
+                     std::multiplies{});
+  }
+
+  auto linear_index(const std::array<size_t, N> &cartesian_index) -> size_t {
+    return std::transform_reduce(begin(stride_), end(stride_),
+                                 begin(cartesian_index), 0);
+  }
+
+private:
+  std::array<size_t, N> stride_;
 };
 
 } // namespace v0

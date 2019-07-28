@@ -46,14 +46,6 @@ TEST_CASE("storage with unknown dimensions is vector") {
   static_assert(std::is_same_v<storage<int, dynamic>::storage_type, std::vector<int>>);
 }
 
-TEST_CASE("storage with static size can be default constructed") {
-  static_assert(size(storage<int, 5>{}) == 5);
-}
-
-TEST_CASE("storage with dynamic size can be created with a runtime capacity") {
-  REQUIRE(size(storage<int, dynamic>{5}) == 5);
-}
-
 TEST_CASE("storage with dynamic size can be indexed") {
   auto s = storage<int, dynamic>{5};
 
@@ -96,4 +88,60 @@ TEST_CASE("storage with static size can be indexed") {
   REQUIRE(s[2] == 2);
   REQUIRE(s[3] == 3);
   REQUIRE(s[4] == 4);
+}
+
+TEST_CASE("row major maps cartesian to linear index") {
+  auto l = sgl::row_major{std::array<size_t, 3>{2, 3, 4}};
+  REQUIRE(l.linear_index({0, 0, 0}) == 0);
+  REQUIRE(l.linear_index({0, 0, 1}) == 1);
+  REQUIRE(l.linear_index({0, 0, 2}) == 2);
+  REQUIRE(l.linear_index({0, 0, 3}) == 3);
+  REQUIRE(l.linear_index({0, 1, 0}) == 4);
+  REQUIRE(l.linear_index({0, 1, 1}) == 5);
+  REQUIRE(l.linear_index({0, 1, 2}) == 6);
+  REQUIRE(l.linear_index({0, 1, 3}) == 7);
+  REQUIRE(l.linear_index({0, 2, 0}) == 8);
+  REQUIRE(l.linear_index({0, 2, 1}) == 9);
+  REQUIRE(l.linear_index({0, 2, 2}) == 10);
+  REQUIRE(l.linear_index({0, 2, 3}) == 11);
+  REQUIRE(l.linear_index({1, 0, 0}) == 12);
+  REQUIRE(l.linear_index({1, 0, 1}) == 13);
+  REQUIRE(l.linear_index({1, 0, 2}) == 14);
+  REQUIRE(l.linear_index({1, 0, 3}) == 15);
+  REQUIRE(l.linear_index({1, 1, 0}) == 16);
+  REQUIRE(l.linear_index({1, 1, 1}) == 17);
+  REQUIRE(l.linear_index({1, 1, 2}) == 18);
+  REQUIRE(l.linear_index({1, 1, 3}) == 19);
+  REQUIRE(l.linear_index({1, 2, 0}) == 20);
+  REQUIRE(l.linear_index({1, 2, 1}) == 21);
+  REQUIRE(l.linear_index({1, 2, 2}) == 22);
+  REQUIRE(l.linear_index({1, 2, 3}) == 23);
+}
+
+TEST_CASE("column major maps cartesian to linear index") {
+  auto l = sgl::column_major{std::array<size_t, 3>{2, 3, 4}};
+  REQUIRE(l.linear_index({0, 0, 0}) == 0);
+  REQUIRE(l.linear_index({1, 0, 0}) == 1);
+  REQUIRE(l.linear_index({0, 1, 0}) == 2);
+  REQUIRE(l.linear_index({1, 1, 0}) == 3);
+  REQUIRE(l.linear_index({0, 2, 0}) == 4);
+  REQUIRE(l.linear_index({1, 2, 0}) == 5);
+  REQUIRE(l.linear_index({0, 0, 1}) == 6);
+  REQUIRE(l.linear_index({1, 0, 1}) == 7);
+  REQUIRE(l.linear_index({0, 1, 1}) == 8);
+  REQUIRE(l.linear_index({1, 1, 1}) == 9);
+  REQUIRE(l.linear_index({0, 2, 1}) == 10);
+  REQUIRE(l.linear_index({1, 2, 1}) == 11);
+  REQUIRE(l.linear_index({0, 0, 2}) == 12);
+  REQUIRE(l.linear_index({1, 0, 2}) == 13);
+  REQUIRE(l.linear_index({0, 1, 2}) == 14);
+  REQUIRE(l.linear_index({1, 1, 2}) == 15);
+  REQUIRE(l.linear_index({0, 2, 2}) == 16);
+  REQUIRE(l.linear_index({1, 2, 2}) == 17);
+  REQUIRE(l.linear_index({0, 0, 3}) == 18);
+  REQUIRE(l.linear_index({1, 0, 3}) == 19);
+  REQUIRE(l.linear_index({0, 1, 3}) == 20);
+  REQUIRE(l.linear_index({1, 1, 3}) == 21);
+  REQUIRE(l.linear_index({0, 2, 3}) == 22);
+  REQUIRE(l.linear_index({1, 2, 3}) == 23);
 }
