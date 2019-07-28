@@ -12,7 +12,7 @@ inline namespace v0 {
 
 static constexpr size_t dynamic = -1;
 
-template <size_t N> concept Dynamic = (N == dynamic);
+template <size_t N> concept Dynamic = N == dynamic;
 
 template <class T> constexpr size_t size_v = size(T{});
 template <class T> constexpr auto shape_v = shape(T{});
@@ -26,6 +26,8 @@ concept Dimensions = requires() {
 // clang-format on
 
 template <class T> constexpr size_t rank_v = rank(T{});
+template <class T>
+constexpr size_t dynamic_dimensions_v = dynamic_dimensions(T{});
 
 template <size_t... Ns> struct dimensions {};
 
@@ -38,9 +40,21 @@ constexpr auto shape(dimensions<Ns...>) -> std::array<size_t, sizeof...(Ns)> {
   return {Ns...};
 }
 
-template <Dimensions D> constexpr auto rank(D d) -> size_t {
-  return size(shape(d));
+constexpr auto rank(Dimensions auto d) -> size_t { return size(shape(d)); }
+
+constexpr auto dynamic_dimensions(Dimensions auto d) -> size_t {
+  size_t count = 0;
+  for (auto &s : shape(d))
+    if (s == dynamic)
+      ++count;
+  return count;
 }
+
+// clang-format off
+template <class S> concept Storage = requires(S s, size_t index) {
+  { s[index] };
+};
+// clang-format on
 
 template <class T, size_t N> struct storage {
   using storage_type =
@@ -55,6 +69,10 @@ template <class T, size_t N> struct storage {
 private:
   storage_type data_;
 };
+
+// clang-format off
+template <class L> concept Layout = true;
+// clang-format on
 
 template <size_t N> struct row_major {
   explicit row_major(const std::array<size_t, N> &shape) {
@@ -87,6 +105,26 @@ template <size_t N> struct column_major {
 private:
   std::array<size_t, N> stride_;
 };
+
+template <class T, Dimensions D, Storage S = storage<T, size_v<D>>,
+          Layout L = row_major<rank_v<D>>>
+struct basic_tensor {
+  basic_tensor() requires(!Dynamic<size_v<D>>)
+      : shape_{shape_v<D>}, layout_{shape_} {}
+
+  friend constexpr auto shape(const basic_tensor &)
+      -> std::array<size_t, rank_v<D>> requires(!Dynamic<size_v<D>>) {
+    return shape_v<D>;
+  }
+
+private:
+  std::array<size_t, rank_v<D>> shape_;
+  S storage_;
+  L layout_;
+};
+
+template <class T, size_t... Ns>
+using tensor = basic_tensor<T, dimensions<Ns...>>;
 
 } // namespace v0
 
