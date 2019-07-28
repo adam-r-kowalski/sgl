@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <numeric>
 #include <type_traits>
 #include <vector>
 
@@ -12,15 +13,33 @@ static constexpr size_t dynamic = -1;
 
 template <size_t N> concept Dynamic = (N == dynamic);
 
-template <class T> struct dimension_traits;
+template <class T> constexpr size_t size_v = size(T{});
+template <class T> constexpr auto shape_v = shape(T{});
+
+// clang-format off
+template <class D>
+concept Dimensions = requires() {
+  { size_v<D> } -> size_t;
+  { shape_v<D> };
+};
+// clang-format on
+
+template <class T> constexpr size_t rank_v = rank(T{});
 
 template <size_t... Ns> struct dimensions {};
 
-template <size_t... Ns> struct dimension_traits<dimensions<Ns...>> {
-  static constexpr size_t rank = sizeof...(Ns);
-  static constexpr size_t size = (Dynamic<Ns> || ...) ? dynamic : (Ns * ...);
-  static constexpr std::array<size_t, rank> shape = {Ns...};
-};
+template <size_t... Ns> constexpr auto size(dimensions<Ns...>) -> size_t {
+  return (Dynamic<Ns> || ...) ? dynamic : (Ns * ...);
+}
+
+template <size_t... Ns>
+constexpr auto shape(dimensions<Ns...>) -> std::array<size_t, sizeof...(Ns)> {
+  return {Ns...};
+}
+
+template <Dimensions D> constexpr auto rank(D d) -> size_t {
+  return shape(d).size();
+}
 
 template <class T, size_t N> struct storage {
   using storage_type =
