@@ -10,6 +10,10 @@ TEST_CASE("dimension model the Dimensions concept") {
   static_assert(Dimensions<dimensions<3, 5, 7>>);
 }
 
+TEST_CASE("dimension shape model the Range concept") {
+  static_assert(Range<decltype(shape_v<dimensions<3, 5, 7>>)>);
+}
+
 TEST_CASE("dynamic dimensions have a dynamic size") {
   static_assert(size_v<dimensions<dynamic, 5, 7>> == dynamic);
 }
@@ -156,4 +160,20 @@ TEST_CASE("column major maps cartesian to linear index") {
 TEST_CASE("tensors can be default constructed if they have known dimensions") {
   auto t = tensor<int, 2, 3>{};
   static_assert(shape(t) == std::array<size_t, 2>{2, 3});
+}
+
+TEST_CASE("ranges have a value type") {
+	static_assert(Same<value_t<std::array<int, 3>>, int>);
+}
+
+TEST_CASE("ranges have a reference type") {
+	static_assert(Same<reference_t<std::array<int, 3>>, int&>);
+}
+
+TEST_CASE("iterators have a value type") {
+	static_assert(Same<value_t<std::array<int, 3>::iterator>, int>);
+}
+
+TEST_CASE("iterators have a reference type") {
+	static_assert(Same<reference_t<std::array<int, 3>::iterator>, int&>);
 }
