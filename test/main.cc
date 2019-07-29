@@ -101,8 +101,24 @@ TEST_CASE("storage with static size can be indexed") {
   REQUIRE(s[4] == 4);
 }
 
+TEST_CASE("storage has a value type") {
+	static_assert(Same<value_t<storage<int, 3>>, int>);
+	static_assert(Same<value_t<storage<int, dynamic>>, int>);
+}
+
+TEST_CASE("storage has a reference type") {
+	static_assert(Same<reference_t<storage<int, 3>>, int&>);
+	static_assert(Same<reference_t<storage<int, dynamic>>, int&>);
+}
+
+TEST_CASE("storage has a const reference type") {
+	static_assert(Same<const_reference_t<storage<int, 3>>, const int&>);
+	static_assert(Same<const_reference_t<storage<int, dynamic>>, const int&>);
+}
+
+
 TEST_CASE("row major maps cartesian to linear index") {
-  auto l = row_major{std::array<size_t, 3>{2, 3, 4}};
+  const auto l = row_major{std::array<size_t, 3>{2, 3, 4}};
   REQUIRE(l.linear_index({0, 0, 0}) == 0);
   REQUIRE(l.linear_index({0, 0, 1}) == 1);
   REQUIRE(l.linear_index({0, 0, 2}) == 2);
@@ -130,7 +146,7 @@ TEST_CASE("row major maps cartesian to linear index") {
 }
 
 TEST_CASE("column major maps cartesian to linear index") {
-  auto l = column_major{std::array<size_t, 3>{2, 3, 4}};
+  const auto l = column_major{std::array<size_t, 3>{2, 3, 4}};
   REQUIRE(l.linear_index({0, 0, 0}) == 0);
   REQUIRE(l.linear_index({1, 0, 0}) == 1);
   REQUIRE(l.linear_index({0, 1, 0}) == 2);
@@ -158,8 +174,25 @@ TEST_CASE("column major maps cartesian to linear index") {
 }
 
 TEST_CASE("tensors can be default constructed if they have known dimensions") {
-  auto t = tensor<int, 2, 3>{};
-  static_assert(shape(t) == std::array<size_t, 2>{2, 3});
+  const auto t = tensor<int, 3, 5, 7>{};
+  static_assert(shape(t) == std::array<size_t, 3>{3, 5, 7});
+}
+
+TEST_CASE("tensors can be constructed by providing dynamic dimensions") {
+  const auto t1 = tensor<int, dynamic, 3, 4>{2};
+  const auto t2 = tensor<int, 2, dynamic, 4>{3};
+  const auto t3 = tensor<int, 2, 3, dynamic>{4};
+  const auto t4 = tensor<int, dynamic, dynamic, 4>{2, 3};
+  const auto t5 = tensor<int, dynamic, 3, dynamic>{2, 4};
+  const auto t6 = tensor<int, 2, dynamic, dynamic>{3, 4};
+  const auto t7 = tensor<int, dynamic, dynamic, dynamic>{2, 3, 4};
+  REQUIRE(shape(t1) == std::array<size_t, 3>{2, 3, 4});
+  REQUIRE(shape(t2) == std::array<size_t, 3>{2, 3, 4});
+  REQUIRE(shape(t3) == std::array<size_t, 3>{2, 3, 4});
+  REQUIRE(shape(t4) == std::array<size_t, 3>{2, 3, 4});
+  REQUIRE(shape(t5) == std::array<size_t, 3>{2, 3, 4});
+  REQUIRE(shape(t6) == std::array<size_t, 3>{2, 3, 4});
+  REQUIRE(shape(t7) == std::array<size_t, 3>{2, 3, 4});
 }
 
 TEST_CASE("ranges have a value type") {
@@ -170,10 +203,18 @@ TEST_CASE("ranges have a reference type") {
 	static_assert(Same<reference_t<std::array<int, 3>>, int&>);
 }
 
+TEST_CASE("ranges have a const reference type") {
+	static_assert(Same<const_reference_t<std::array<int, 3>>, const int&>);
+}
+
 TEST_CASE("iterators have a value type") {
 	static_assert(Same<value_t<std::array<int, 3>::iterator>, int>);
 }
 
 TEST_CASE("iterators have a reference type") {
 	static_assert(Same<reference_t<std::array<int, 3>::iterator>, int&>);
+}
+
+TEST_CASE("iterators have a const reference type") {
+	static_assert(Same<const_reference_t<std::array<int, 3>::iterator>, const int&>);
 }
