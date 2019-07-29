@@ -52,7 +52,9 @@ constexpr auto rank(Dimensions auto d) -> size_t { return size(shape(d)); }
 
 // TODO: no raw loops
 template <Dimensions D, class... Ds>
-auto runtime_shape(Ds... ds) -> std::array<size_t, rank_v<D>> {
+auto runtime_shape(Ds... ds)
+    -> std::array<size_t, rank_v<D>> requires(sizeof...(Ds) ==
+                                              dynamic_dimensions_v<D>) {
   auto static_shape = shape_v<D>;
   const auto dynamic_dimensions = std::array{ds...};
   size_t j = 0;
@@ -191,11 +193,8 @@ struct basic_tensor {
   basic_tensor() requires(!Dynamic<size_v<D>>)
       : shape_{shape_v<D>}, layout_{shape_} {}
 
-  // TODO: refactor requires expression
   template <class... Ds>
-  explicit basic_tensor(Ds... ds) requires(Dynamic<size_v<D>> &&
-                                           (sizeof...(Ds) ==
-                                            dynamic_dimensions_v<D>))
+  explicit basic_tensor(Ds... ds) requires(Dynamic<size_v<D>>)
       : shape_{runtime_shape<D>(std::forward<Ds>(ds)...)},
         storage_{product(shape_)}, layout_{shape_} {}
 
@@ -207,6 +206,18 @@ struct basic_tensor {
   auto shape() const
       -> std::array<size_t, rank_v<D>> requires(Dynamic<size_v<D>>) {
     return shape_;
+  }
+
+  template <class... Is>
+  friend auto index(basic_tensor &t, Is... cartesian_index)
+      -> T &requires(sizeof...(Is) == rank_v<D>) {
+    return t.storage_[t.layout_.linear_index(cartesian_index...)];
+  }
+
+  template <class... Is>
+  friend auto index(basic_tensor const &t, Is... cartesian_index)
+      -> T const &requires(sizeof...(Is) == rank_v<D>) {
+    return t.storage_[t.layout_.linear_index(cartesian_index...)];
   }
 
 private:
