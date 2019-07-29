@@ -50,6 +50,20 @@ constexpr auto shape(dimensions<Ns...>) -> std::array<size_t, sizeof...(Ns)> {
 
 constexpr auto rank(Dimensions auto d) -> size_t { return size(shape(d)); }
 
+// TODO: no raw loops
+template <Dimensions D, class... Ds>
+auto runtime_shape(Ds... ds) -> std::array<size_t, rank_v<D>> {
+  auto static_shape = shape_v<D>;
+  const auto dynamic_dimensions = std::array{ds...};
+  size_t j = 0;
+  for (size_t i = 0; i < size(static_shape); ++i)
+    if (static_shape[i] == dynamic) {
+      static_shape[i] = dynamic_dimensions[j];
+      ++j;
+    }
+  return static_shape;
+}
+
 template <class T> struct value;
 template <class T> using value_t = typename value<T>::type;
 
@@ -74,7 +88,7 @@ template <Iterator I> struct value<I> {
 
 // clang-format off
 template <class R> concept Range =
-	requires(R&& r) {
+	requires(R r) {
 		{ begin(r) } -> Iterator;
 		{ end(r) } -> Iterator;
 	};
@@ -84,13 +98,14 @@ template <Range R> struct value<R> { using type = typename R::value_type; };
 
 // clang-format off
 template <class F, class Result, class... Args> concept Callable =
-  requires(F&& f, Args&&... args) {
+  requires(F f, Args&&... args) {
 		{ f(std::forward<Args>(args)...) } -> Result;
 	};
 // clang-format on
 
 template <Range R, class A, class E = const_reference_t<R>>
-constexpr auto reduce(R range, A accumulator, Callable<A, A, E> auto op) -> A {
+constexpr auto reduce(R const &range, A accumulator, Callable<A, A, E> auto op)
+    -> A {
   for (auto const &element : range)
     accumulator = op(std::move(accumulator), element);
   return accumulator;
@@ -133,13 +148,13 @@ template <class L> concept Layout = true;
 // clang-format on
 
 template <size_t N> struct row_major {
-  explicit row_major(const std::array<size_t, N> &shape) {
+  explicit row_major(std::array<size_t, N> const &shape) {
     stride_[size(shape) - 1] = 1;
     std::partial_sum(rbegin(shape), rend(shape) - 1, rbegin(stride_) + 1,
                      std::multiplies{});
   }
 
-  auto linear_index(const std::array<size_t, N> &cartesian_index) const
+  auto linear_index(std::array<size_t, N> const &cartesian_index) const
       -> size_t {
     return std::transform_reduce(begin(stride_), end(stride_),
                                  begin(cartesian_index), 0);
@@ -150,13 +165,13 @@ private:
 };
 
 template <size_t N> struct column_major {
-  explicit column_major(const std::array<size_t, N> &shape) {
+  explicit column_major(std::array<size_t, N> const &shape) {
     stride_[0] = 1;
     std::partial_sum(begin(shape), end(shape) - 1, begin(stride_) + 1,
                      std::multiplies{});
   }
 
-  auto linear_index(const std::array<size_t, N> &cartesian_index) const
+  auto linear_index(std::array<size_t, N> const &cartesian_index) const
       -> size_t {
     return std::transform_reduce(begin(stride_), end(stride_),
                                  begin(cartesian_index), 0);
@@ -166,18 +181,23 @@ private:
   std::array<size_t, N> stride_;
 };
 
+constexpr auto product(Range auto const &range) -> size_t {
+  return reduce(range, 1, std::multiplies{});
+}
+
 template <class T, Dimensions D, Storage S = storage<T, size_v<D>>,
           Layout L = row_major<rank_v<D>>>
 struct basic_tensor {
   basic_tensor() requires(!Dynamic<size_v<D>>)
       : shape_{shape_v<D>}, layout_{shape_} {}
 
+  // TODO: refactor requires expression
   template <class... Ds>
   explicit basic_tensor(Ds... ds) requires(Dynamic<size_v<D>> &&
                                            (sizeof...(Ds) ==
                                             dynamic_dimensions_v<D>))
-      : shape_{full_shape_(ds...)}, storage_{storage_size_()}, layout_{shape_} {
-  }
+      : shape_{runtime_shape<D>(std::forward<Ds>(ds)...)},
+        storage_{product(shape_)}, layout_{shape_} {}
 
   constexpr auto shape() const
       -> std::array<size_t, rank_v<D>> requires(!Dynamic<size_v<D>>) {
@@ -190,32 +210,13 @@ struct basic_tensor {
   }
 
 private:
-  // TODO: no raw loops
-  template <class... Ds>
-  auto full_shape_(Ds... ds) const -> std::array<size_t, rank_v<D>> {
-    auto static_dims = shape_v<D>;
-    const auto dynamic_dims = std::array{ds...};
-    size_t j = 0;
-    for (size_t i = 0; i < size(static_dims); ++i)
-      if (static_dims[i] == dynamic) {
-        static_dims[i] = dynamic_dims[j];
-        ++j;
-      }
-
-    return static_dims;
-  }
-
-  auto storage_size_() const -> size_t {
-    return reduce(shape_, 1, std::multiplies{});
-  }
-
   std::array<size_t, rank_v<D>> shape_;
   S storage_;
   L layout_;
 };
 
 template <class T, Dimensions D, Storage S, Layout L>
-constexpr auto shape(const basic_tensor<T, D, S, L> &t)
+constexpr auto shape(basic_tensor<T, D, S, L> const &t)
     -> std::array<size_t, rank_v<D>> {
   return t.shape();
 }
