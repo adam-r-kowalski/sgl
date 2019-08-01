@@ -176,8 +176,8 @@ TEST_CASE("column major maps cartesian to linear index") {
   REQUIRE(l.linear_index({1, 2, 3}) == 23);
 }
 
-TEST_CASE("tensors can be default constructed if they have known dimensions") {
-  const auto t = tensor<int, 3, 5, 7>{};
+TEST_CASE("cpu_tensors can be default constructed if they have known dimensions") {
+  const auto t = cpu_tensor<int, 3, 5, 7>{};
   static_assert(shape(t) == std::array<size_t, 3>{3, 5, 7});
 }
 
@@ -188,14 +188,14 @@ TEST_CASE("runtime shape fills in missing dimensions at runtime") {
   REQUIRE(runtime_shape<dimension_list<dynamic, dynamic, dynamic>>(3, 5, 7) == std::array<size_t, 3>{3, 5, 7});
 }
 
-TEST_CASE("tensors can be constructed by providing dynamic dimensions") {
-  const auto t1 = tensor<int, dynamic, 3, 4>{2};
-  const auto t2 = tensor<int, 2, dynamic, 4>{3};
-  const auto t3 = tensor<int, 2, 3, dynamic>{4};
-  const auto t4 = tensor<int, dynamic, dynamic, 4>{2, 3};
-  const auto t5 = tensor<int, dynamic, 3, dynamic>{2, 4};
-  const auto t6 = tensor<int, 2, dynamic, dynamic>{3, 4};
-  const auto t7 = tensor<int, dynamic, dynamic, dynamic>{2, 3, 4};
+TEST_CASE("cpu_tensors can be constructed by providing dynamic dimensions") {
+  const auto t1 = cpu_tensor<int, dynamic, 3, 4>{2};
+  const auto t2 = cpu_tensor<int, 2, dynamic, 4>{3};
+  const auto t3 = cpu_tensor<int, 2, 3, dynamic>{4};
+  const auto t4 = cpu_tensor<int, dynamic, dynamic, 4>{2, 3};
+  const auto t5 = cpu_tensor<int, dynamic, 3, dynamic>{2, 4};
+  const auto t6 = cpu_tensor<int, 2, dynamic, dynamic>{3, 4};
+  const auto t7 = cpu_tensor<int, dynamic, dynamic, dynamic>{2, 3, 4};
   REQUIRE(shape(t1) == std::array<size_t, 3>{2, 3, 4});
   REQUIRE(shape(t2) == std::array<size_t, 3>{2, 3, 4});
   REQUIRE(shape(t3) == std::array<size_t, 3>{2, 3, 4});
@@ -205,9 +205,34 @@ TEST_CASE("tensors can be constructed by providing dynamic dimensions") {
   REQUIRE(shape(t7) == std::array<size_t, 3>{2, 3, 4});
 }
 
-TEST_CASE("tensors can be indexed") {
-  auto t = tensor<int, 1, 2, 3>{};
-  //REQUIRE(t(0, 0, 0) == 0);
+TEST_CASE("cpu_tensors can be indexed with an array") {
+  auto t = cpu_tensor<int, 1, 2, 3>{};
+
+  REQUIRE(index(t, std::array<size_t, 3>{0, 0, 0}) == 0);
+  REQUIRE(index(t, std::array<size_t, 3>{0, 0, 1}) == 0);
+  REQUIRE(index(t, std::array<size_t, 3>{0, 0, 2}) == 0);
+  REQUIRE(index(t, std::array<size_t, 3>{0, 1, 0}) == 0);
+  REQUIRE(index(t, std::array<size_t, 3>{0, 1, 1}) == 0);
+  REQUIRE(index(t, std::array<size_t, 3>{0, 1, 2}) == 0);
+
+  index(t, std::array<size_t, 3>{0, 0, 0}) = 1;
+  index(t, std::array<size_t, 3>{0, 0, 1}) = 2;
+  index(t, std::array<size_t, 3>{0, 0, 2}) = 3;
+  index(t, std::array<size_t, 3>{0, 1, 0}) = 4;
+  index(t, std::array<size_t, 3>{0, 1, 1}) = 5;
+  index(t, std::array<size_t, 3>{0, 1, 2}) = 6;
+
+  REQUIRE(index(t, std::array<size_t, 3>{0, 0, 0}) == 1);
+  REQUIRE(index(t, std::array<size_t, 3>{0, 0, 1}) == 2);
+  REQUIRE(index(t, std::array<size_t, 3>{0, 0, 2}) == 3);
+  REQUIRE(index(t, std::array<size_t, 3>{0, 1, 0}) == 4);
+  REQUIRE(index(t, std::array<size_t, 3>{0, 1, 1}) == 5);
+  REQUIRE(index(t, std::array<size_t, 3>{0, 1, 2}) == 6);
+}
+
+TEST_CASE("cpu_tensors model the tensor concept") {
+  //static_assert(tensor<cpu_tensor<int, 1, 2, 3>>);
+  //static_assert(shape_v<tensor<cpu_tensor<int, 1, 2, 3>>> == std::array<size_t, 3>{1, 2, 3});
 }
 
 TEST_CASE("ranges have a value type") {

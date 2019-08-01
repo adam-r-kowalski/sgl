@@ -8,12 +8,13 @@
 
 namespace sgl {
 
-inline namespace v0 {
-
 // clang-format off
 template <class T, class U>
 concept same_as = std::is_same_v<T, U> && std::is_same_v<U, T>;
 // clang-format on
+
+template <class From, class To>
+concept convertible_to = std::is_convertible_v<From, To>;
 
 constexpr size_t dynamic = -1;
 template <size_t N> concept dynamic_v = N == dynamic;
@@ -101,14 +102,14 @@ template <class R> concept range =
 template <range R> struct value<R> { using type = typename R::value_type; };
 
 // clang-format off
-template <class F, class Result, class... Args> concept callable =
+template <class F, class Result, class... Args> concept function =
   requires(F f, Args&&... args) {
     { f(std::forward<Args>(args)...) } -> Result;
   };
 // clang-format on
 
 template <range R, class A, class E = const_reference_t<R>>
-constexpr auto reduce(R const &range, A accumulator, callable<A, A, E> auto op)
+constexpr auto fold(R const &range, A accumulator, function<A, A, E> auto op)
     -> A {
   for (auto const &element : range)
     accumulator = op(std::move(accumulator), element);
@@ -116,7 +117,7 @@ constexpr auto reduce(R const &range, A accumulator, callable<A, A, E> auto op)
 }
 
 constexpr auto dynamic_dimensions(dimensions auto d) -> size_t {
-  return reduce(shape(d), 0, [](auto const &a, auto const &v) {
+  return fold(shape(d), 0, [](auto const &a, auto const &v) {
     return v == dynamic ? a + 1 : a;
   });
 }
@@ -191,41 +192,48 @@ private:
 
 template <range R, class T = value_t<R>>
 constexpr auto product(R const &range) -> T {
-  return reduce(range, T{1}, std::multiplies{});
+  return fold(range, T{1}, std::multiplies{});
 }
+
+template <dimensions D, size_t... Is>
+constexpr auto in_bounds() -> bool requires(sizeof...(Is) == rank_v<D>) {
+  auto cartesian_index = std::array{Is...};
+  auto inside = std::array<bool, rank_v<D>>{};
+  std::transform(begin(cartesian_index), end(cartesian_index),
+                 begin(shape_v<D>), begin(inside),
+                 [](auto i, auto s) { return i < s; });
+  return std::all_of(begin(inside), end(inside), [](auto b) { return b; });
+}
+
+// clang-format off
+template <class D, size_t... Is>
+concept in_bounds_v = dimensions<D> && in_bounds<D, Is...>();
+// clang-format on
 
 template <class T, dimensions D, storage S = default_storage<T, size_v<D>>,
           layout L = row_major<rank_v<D>>>
 struct basic_tensor {
   basic_tensor() requires(!dynamic_v<size_v<D>>)
-      : shape_{shape_v<D>}, layout_{shape_} {}
+      : shape_{shape_v<D>}, storage_{}, layout_{shape_} {}
 
   template <class... Ds>
   explicit basic_tensor(Ds... ds) requires(dynamic_v<size_v<D>>)
       : shape_{runtime_shape<D>(std::forward<Ds>(ds)...)},
         storage_{product(shape_)}, layout_{shape_} {}
 
-  constexpr auto shape() const
-      -> std::array<size_t, rank_v<D>> requires(!dynamic_v<size_v<D>>) {
-    return shape_v<D>;
-  }
-
-  auto shape() const
-      -> std::array<size_t, rank_v<D>> requires(dynamic_v<size_v<D>>) {
+  constexpr auto shape() const -> std::array<size_t, rank_v<D>> {
     return std::is_constant_evaluated() ? shape_v<D> : shape_;
   }
 
-  template <class... Is>
-  friend auto index(basic_tensor &t, Is... is)
-      -> T &requires(sizeof...(Is) == rank_v<D>) {
-    const auto cartesian_index = std::array<size_t, sizeof...(Is)>{is...};
+  friend auto index(basic_tensor &t,
+                    std::array<size_t, rank_v<D>> const &cartesian_index)
+      -> T & {
     return t.storage_[t.layout_.linear_index(cartesian_index)];
   }
 
-  template <class... Is>
-  friend auto index(basic_tensor const &t, Is... is)
-      -> T const &requires(sizeof...(Is) == rank_v<D>) {
-    const auto cartesian_index = std::array<size_t, sizeof...(Is)>{is...};
+  friend auto index(basic_tensor const &t,
+                    std::array<size_t, rank_v<D>> const &cartesian_index)
+      -> const T & {
     return t.storage_[t.layout_.linear_index(cartesian_index)];
   }
 
@@ -242,8 +250,14 @@ constexpr auto shape(basic_tensor<T, D, S, L> const &t)
 }
 
 template <class T, size_t... Ns>
-using tensor = basic_tensor<T, dimension_list<Ns...>>;
+using cpu_tensor = basic_tensor<T, dimension_list<Ns...>>;
 
-} // namespace v0
+// clang-format off
+template <class T>
+concept tensor = requires(T t, T const ct, shape_t<T> cartesian_index) {
+  { index(t, cartesian_index) } -> convertible_to<reference_t<T>>;
+  { index(ct, cartesian_index) } -> convertible_to<const_reference_t<T>>;
+};
+// clang-format on
 
 } // namespace sgl
