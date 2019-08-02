@@ -10,11 +10,9 @@ TEST_CASE("dimension model the Dimensions concept") {
   static_assert(dimensions<dimension_list<3, 5, 7>>);
 }
 
-
 TEST_CASE("dimension shape model the Range concept") {
   static_assert(range<decltype(shape_v<dimension_list<3, 5, 7>>)>);
 }
-
 
 TEST_CASE("dynamic dimensions have a dynamic size") {
   static_assert(size_v<dimension_list<dynamic, 5, 7>> == dynamic);
@@ -46,7 +44,6 @@ TEST_CASE("dynamic_dimensions_v computes the number of dynamic dimensions") {
   static_assert(dynamic_dimensions_v<dimension_list<dynamic, 2, dynamic>> == 2);
   static_assert(dynamic_dimensions_v<dimension_list<dynamic, dynamic, dynamic>> == 3);
 }
-
 
 TEST_CASE("static dimension have a compile time size") {
   static_assert(size_v<dimension_list<3, 5, 7>> == 3 * 5 * 7);
@@ -205,6 +202,7 @@ TEST_CASE("cpu_tensors can be constructed by providing dynamic dimensions") {
   REQUIRE(shape(t7) == std::array<size_t, 3>{2, 3, 4});
 }
 
+
 TEST_CASE("cpu_tensors can be indexed with an array") {
   auto t = cpu_tensor<int, 1, 2, 3>{};
 
@@ -231,8 +229,7 @@ TEST_CASE("cpu_tensors can be indexed with an array") {
 }
 
 TEST_CASE("cpu_tensors model the tensor concept") {
-  //static_assert(tensor<cpu_tensor<int, 1, 2, 3>>);
-  //static_assert(shape_v<tensor<cpu_tensor<int, 1, 2, 3>>> == std::array<size_t, 3>{1, 2, 3});
+  static_assert(tensor<cpu_tensor<int, 1, 2, 3>>);
 }
 
 TEST_CASE("ranges have a value type") {
