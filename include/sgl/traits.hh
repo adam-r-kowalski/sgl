@@ -1,6 +1,8 @@
 #pragma once
 
+#include <array>
 #include <cstdlib>
+#include <type_traits>
 
 namespace sgl {
 
@@ -16,7 +18,9 @@ template <class T> struct value;
 
 template <class T> struct reference { using type = typename value<T>::type &; };
 
-template <class T> struct const_reference { using type = typename value<T>::type const &; };
+template <class T> struct const_reference {
+  using type = typename value<T>::type const &;
+};
 
 } // namespace traits
 
@@ -31,6 +35,7 @@ template <class T> using value_t = typename traits::value<T>::type;
 
 template <class T> using reference_t = typename traits::reference<T>::type;
 
-template <class T> using const_reference_t = typename traits::const_reference<T>::type;
+template <class T>
+using const_reference_t = typename traits::const_reference<T>::type;
 
 } // namespace sgl

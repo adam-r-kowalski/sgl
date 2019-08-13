@@ -71,5 +71,4 @@ template <class S> concept storage =
   };
 // clang-format on
 
-
 }
